@@ -8,29 +8,6 @@ from . import GeneralHelper
 
 class WhoisHelper:
     @classmethod
-    async def build_info_embed(
-        cls,
-        info: dict,
-        /,
-        *,
-        colour: discord.Colour | discord.Color | None = None,
-        thumbnail: str | None = None,
-        image: str | None = None,
-    ) -> discord.Embed:
-        embed = discord.Embed(title="User info", description="", colour=colour, timestamp=datetime.now())
-        if thumbnail:
-            embed.set_thumbnail(url=thumbnail)
-        if image:
-            embed.set_image(url=image)
-
-        for key, value in info.items():
-            if isinstance(value, dict):
-                embed.add_field(name=key, value=await GeneralHelper.info_to_string(value))
-                continue
-            embed.description += await GeneralHelper.info_to_string({key: value})
-        return embed
-
-    @classmethod
     async def get_user_info(cls, user: discord.User, /) -> dict:
         created_at = int(time.mktime(user.created_at.timetuple()))
         user_type = None
@@ -158,5 +135,7 @@ class WhoisHelper:
                     embeds.append(await cls.create_game_embed(activity))
                 case discord.Streaming:
                     embeds.append(await cls.create_stream_embed(activity))
+                # TODO: support custom activities
+                #  https://discordpy.readthedocs.io/en/latest/api.html#discord.CustomActivity
 
         return embeds
