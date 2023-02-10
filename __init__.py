@@ -10,10 +10,7 @@ import breadcord
 from breadcord.module import ModuleCog
 
 
-class Thermometer(ModuleCog):
-    def __init__(self, module_id: str):
-        super().__init__(module_id)
-        self.cog_load_time: datetime = datetime.now()
+class Helpers:
 
     @staticmethod
     def readable_timedelta(duration: timedelta) -> str:
@@ -29,16 +26,6 @@ class Thermometer(ModuleCog):
             string += f"{round(minutes)} minutes "
         string += f"{round(seconds)} seconds"
         return string
-
-    @app_commands.command(description="Returns how long the bot has been running.")
-    async def uptime(self, interaction: discord.Interaction) -> None:
-        # This is technically wrong, as it's the cog uptime, not necessarily the bot uptime, but eh
-        uptime = datetime.now() - self.cog_load_time
-        started_timestamp = round(time.mktime(self.cog_load_time.timetuple()))
-
-        await interaction.response.send_message(
-            f"Bot has been online for {self.readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
-        )
 
     @staticmethod
     def enhance_asset_image(asset: discord.Asset) -> discord.Asset:
@@ -196,24 +183,42 @@ class Thermometer(ModuleCog):
 
         return embeds
 
+
+
+class Thermometer(ModuleCog):
+    def __init__(self, module_id: str):
+        super().__init__(module_id)
+        self.cog_load_time: datetime = datetime.now()
+        self.helper = Helpers()
+
+    @app_commands.command(description="Returns how long the bot has been running.")
+    async def uptime(self, interaction: discord.Interaction) -> None:
+        # This is technically wrong, as it's the cog uptime, not necessarily the bot uptime, but eh
+        uptime = datetime.now() - self.cog_load_time
+        started_timestamp = round(time.mktime(self.cog_load_time.timetuple()))
+
+        await interaction.response.send_message(
+            f"Bot has been online for {self.helper.readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
+        )
+
     @app_commands.command(description="Gets info about a user.")
     async def whois(self, interaction: discord.Interaction, user: discord.User = None) -> None:
         user: discord.User = await self.bot.fetch_user(user.id) if user else interaction.user
-        user_info = await self.get_user_info(user)
-        banner = self.enhance_asset_image(user.banner).url if user.banner else None
+        user_info = await self.helper.get_user_info(user)
+        banner = self.helper.enhance_asset_image(user.banner).url if user.banner else None
         embeds = []
 
         if user in interaction.guild.members:
             user: discord.Member = interaction.guild.get_member(user.id)
-            user_info |= await self.get_member_info(user)
-            embeds.extend(await self.get_member_activity_embeds(user))
+            user_info |= await self.helper.get_member_info(user)
+            embeds.extend(await self.helper.get_member_activity_embeds(user))
 
         embeds.insert(
             0,
-            await self.build_info_embed(
+            await self.helper.build_info_embed(
                 user_info,
                 colour=user_info["Role colour"] if "Role colour" in user_info else None,
-                thumbnail=self.enhance_asset_image(user.display_avatar).url,
+                thumbnail=self.helper.enhance_asset_image(user.display_avatar).url,
                 image=banner,
             ),
         )
