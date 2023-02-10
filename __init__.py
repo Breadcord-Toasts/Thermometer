@@ -11,8 +11,8 @@ from breadcord.module import ModuleCog
 
 
 class Thermometer(ModuleCog):
-    def __init__(self, name: str | None = None) -> None:
-        super().__init__(name)
+    def __init__(self, module_id: str):
+        super().__init__(module_id)
         self.cog_load_time: datetime = datetime.now()
 
     @staticmethod
@@ -93,12 +93,13 @@ class Thermometer(ModuleCog):
     async def get_member_info(member: discord.Member, /) -> dict:
         colour = member.colour
         joined_at = int(time.mktime(member.joined_at.timetuple()))
-        timeout_timestamp = int(time.mktime(member.timed_out_until.timetuple())) if member.is_timed_out() else None
+        is_timed_out = member.is_timed_out()
+        timeout_timestamp = int(time.mktime(member.timed_out_until.timetuple())) if is_timed_out else None
         return {
             "Joined at": f"<t:{joined_at}> (<t:{joined_at}:R>)",
             "Status": str(member.status).title(),
             "On mobile": member.is_on_mobile() or None,
-            "Timed out until": f"<t:{timeout_timestamp}> (<t:{timeout_timestamp}:R>)",
+            "Timed out until": f"<t:{timeout_timestamp}> (<t:{timeout_timestamp}:R>)"  if is_timed_out else None,
             # As of writing, this version of discord.py is not on PyPI
             "Has rejoined": (
                 discord.version_info.major >= 2 and discord.version_info.minor >= 2 and member.flags.did_rejoin
@@ -221,4 +222,4 @@ class Thermometer(ModuleCog):
 
 
 async def setup(bot: breadcord.Bot):
-    await bot.add_cog(Thermometer())
+    await bot.add_cog(Thermometer("thermometer"))
