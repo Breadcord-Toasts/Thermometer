@@ -11,6 +11,8 @@ class GuildInfoHelper:
         created_at = round(time.mktime(guild.created_at.timetuple()))
         nsfw_level = guild.nsfw_level.name.title() if guild.nsfw_level != discord.NSFWLevel.default else None
         filesize_limit, filesize_unit = GeneralHelper.convert_bytes(guild.filesize_limit)
+        bot_count = len([member for member in guild.members if member.bot])
+        human_count = guild.member_count - bot_count
 
         # noinspection PyUnresolvedReferences
         return {
@@ -45,6 +47,9 @@ class GuildInfoHelper:
             },
             "Stats": {
                 "Members": f"{guild.member_count}/{guild.max_members}",
+                "Bots": bot_count,
+                "Humans": human_count,
+                "Bot/human ratio": f"{round(bot_count/human_count, 3)} bots per human",
                 "Roles": len(guild.roles),
                 "Emojis": f"{len(guild.emojis)}/{guild.emoji_limit}",
                 "Stickers": f"{len(guild.stickers)}/{guild.sticker_limit}",
