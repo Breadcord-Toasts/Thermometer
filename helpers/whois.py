@@ -102,6 +102,7 @@ class WhoisHelper:
         embed = discord.Embed(
             title=f"Activity: {activity.name}",
             description=activity.details,
+            colour=discord.Colour.random(),
         )
 
         started_at = int(time.mktime(activity.start.timetuple())) if activity.start else None
