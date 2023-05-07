@@ -1,14 +1,23 @@
 import time
 from datetime import datetime, timezone
 
+import aiohttp
 import discord
 
 from . import GeneralHelper
 
 
 class WhoisHelper:
-    @classmethod
-    async def get_user_info(cls, user: discord.User, /) -> dict:
+    def __init__(self):
+        self.session: None | aiohttp.ClientSession = None
+
+    async def open_session(self) -> None:
+        self.session = aiohttp.ClientSession()
+
+    async def close_session(self) -> None:
+        await self.session.close()
+
+    async def get_user_info(self, user: discord.User, /) -> dict:
         created_at = int(time.mktime(user.created_at.timetuple()))
         user_type = None
         if user.bot:
@@ -22,6 +31,7 @@ class WhoisHelper:
             "Mention": user.mention,
             "Nickname": discord.utils.escape_markdown(user.display_name) if user.display_name != user.name else None,
             "ID": user.id,
+            "Pronouns": await self.get_user_pronouns(user),
             "User type": user_type,
             "Created at": f"<t:{created_at}> (<t:{created_at}:R>)",
         }
@@ -140,3 +150,41 @@ class WhoisHelper:
                 #  https://discordpy.readthedocs.io/en/latest/api.html#discord.CustomActivity
 
         return embeds
+
+    @classmethod
+    def pronoun_from_code(cls, pronoun_short_code: str, /) -> str | None:
+        pronoun_map = {
+            "hh": "he/him",
+            "hi": "he/it",
+            "hs": "he/she",
+            "ht": "he/they",
+            "ih": "it/him",
+            "ii": "it/its",
+            "is": "it/she",
+            "it": "it/they",
+            "shh": "she/he",
+            "sh": "she/her",
+            "si": "she/it",
+            "st": "she/they",
+            "th": "they/he",
+            "ti": "they/it",
+            "ts": "they/she",
+            "tt": "they/them",
+            "any": "Any pronouns",
+            "other": "Other pronouns",
+            "ask": "Ask me my pronouns",
+            "avoid": "Avoid pronouns, use my name",
+            "unspecified": None,
+        }
+        return pronoun_map.get(pronoun_short_code)
+
+    async def get_user_pronouns(self, user: discord.User | int, /) -> str | None:
+        if not isinstance(user, int):
+            user = user.id
+        async with self.session.get(f"https://pronoundb.org/api/v1/lookup?platform=discord&id={user}") as response:
+            if response.status != 200:
+                return
+            return self.pronoun_from_code((await response.json())["pronouns"])
+
+
+

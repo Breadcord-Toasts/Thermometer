@@ -9,10 +9,18 @@ from breadcord.module import ModuleCog
 from .helpers import GeneralHelper, WhoisHelper, GuildInfoHelper
 
 
-class Thermometer(ModuleCog):
+class Thermometer(ModuleCog, WhoisHelper):
     def __init__(self, module_id: str):
         super().__init__(module_id)
+        super(WhoisHelper, self).__init__()
+
         self.cog_load_time: datetime = datetime.now()
+
+    async def cog_load(self) -> None:
+        await self.open_session()
+
+    async def cog_unload(self) -> None:
+        await self.close_session()
 
     @app_commands.command(description="Returns how long the bot has been running.")
     async def uptime(self, interaction: discord.Interaction) -> None:
@@ -27,14 +35,14 @@ class Thermometer(ModuleCog):
     @app_commands.command(description="Gets info about a user.")
     async def whois(self, interaction: discord.Interaction, user: discord.User | None = None) -> None:
         user: discord.User = await self.bot.fetch_user(user.id) if user else interaction.user
-        user_info = await WhoisHelper.get_user_info(user)
+        user_info = await self.get_user_info(user)
         banner = GeneralHelper.enhance_asset_image(user.banner).url if user.banner else None
         embeds = []
 
         if user in interaction.guild.members:
             user: discord.Member = interaction.guild.get_member(user.id)
-            user_info |= await WhoisHelper.get_member_info(user)
-            embeds.extend(await WhoisHelper.get_member_activity_embeds(user))
+            user_info |= await self.get_member_info(user)
+            embeds.extend(await self.get_member_activity_embeds(user))
 
         embeds.insert(
             0,

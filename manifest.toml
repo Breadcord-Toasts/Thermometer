@@ -7,3 +7,6 @@ description = "A set of commands dedicated to providing information about things
 version = "1.0.0"
 license = "GNU GPLv3"
 authors = ["Fripe"]
+requirements = [
+    "aiohttp"
+]
