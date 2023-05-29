@@ -56,6 +56,7 @@ class Thermometer(ModuleCog, WhoisHelper):
 
     @commands.hybrid_group(name="guild", description="Various guild related info")
     async def guild_info_group(self, ctx: commands.Context) -> None:
+        # This function is executed when "guild" is run as a message command, it will never run from a slash command.
         await self.guild_info(ctx)
 
     @guild_info_group.command(name="channels", description="Get the guilds channels.")
