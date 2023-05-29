@@ -5,7 +5,7 @@ import discord
 
 class GeneralHelper:
     @classmethod
-    async def info_to_string(cls, info: dict) -> str:
+    def info_to_string(cls, info: dict) -> str:
         return "".join(f"**{key}:** {value}\n" for key, value in info.items() if value is not None)
 
     @classmethod
@@ -36,7 +36,7 @@ class GeneralHelper:
             bytes /= step_size
 
     @classmethod
-    async def build_info_embed(
+    def build_info_embed(
         cls,
         info: dict,
         /,
@@ -55,8 +55,8 @@ class GeneralHelper:
 
         for key, value in info.items():
             if isinstance(value, dict):
-                embed.add_field(name=key, value=await GeneralHelper.info_to_string(value), inline=inline_fields)
+                embed.add_field(name=key, value=GeneralHelper.info_to_string(value), inline=inline_fields)
                 continue
-            embed.description += await GeneralHelper.info_to_string({key: value})
+            embed.description += GeneralHelper.info_to_string({key: value})
         return embed
 

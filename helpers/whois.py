@@ -61,7 +61,7 @@ class WhoisHelper:
     async def create_spotify_embed(cls, activity: discord.Spotify) -> discord.Embed:
         embed = discord.Embed(
             title=f"Listening to: {activity.title}",
-            description=await GeneralHelper.info_to_string(
+            description=GeneralHelper.info_to_string(
                 {"Artist": ", ".join(activity.artists), "Album": activity.album, "Song url": activity.track_url}
             ),
             colour=activity.colour,
@@ -75,7 +75,7 @@ class WhoisHelper:
         ends_at = int(time.mktime(activity.end.timetuple())) if activity.end else None
         return discord.Embed(
             title=f"Playing: {activity.name}",
-            description=await GeneralHelper.info_to_string(
+            description=GeneralHelper.info_to_string(
                 {
                     "Started at": f"<t:{started_at}> (<t:{started_at}:R>)" if started_at else None,
                     "Ends at": f"<t:{ends_at}> (<t:{ends_at}:R>)" if ends_at else None,
@@ -96,7 +96,7 @@ class WhoisHelper:
 
         return discord.Embed(
             title=f"Streaming: {activity.name}",
-            description=await GeneralHelper.info_to_string(
+            description=GeneralHelper.info_to_string(
                 {
                     "Game": activity.game,
                     "Platform": platform,
@@ -120,7 +120,7 @@ class WhoisHelper:
         duration = datetime.now(timezone.utc) - activity.start if activity.start else None
         embed.add_field(
             name=" ",
-            value=await GeneralHelper.info_to_string(
+            value=GeneralHelper.info_to_string(
                 {
                     "State": activity.state or None,
                     "Started at": f"<t:{started_at}> (<t:{started_at}:R>)" if started_at else None,
