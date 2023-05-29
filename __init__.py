@@ -44,16 +44,13 @@ class Thermometer(ModuleCog, WhoisHelper):
             user_info |= await self.get_member_info(user)
             embeds.extend(await self.get_member_activity_embeds(user))
 
-        embeds.insert(
-            0,
-            await GeneralHelper.build_info_embed(
-                user_info,
-                title="User info",
-                colour=user_info["Role colour"] if "Role colour" in user_info else None,
-                thumbnail=GeneralHelper.enhance_asset_image(user.display_avatar).url,
-                image=banner,
-            ),
-        )
+        embeds.insert(0, await GeneralHelper.build_info_embed(
+            user_info,
+            title="User info",
+            colour=user_info["Role colour"] if "Role colour" in user_info else None,
+            thumbnail=GeneralHelper.enhance_asset_image(user.display_avatar).url,
+            image=banner,
+        ))
 
         await interaction.response.send_message(embeds=embeds[:10])
 
@@ -66,30 +63,26 @@ class Thermometer(ModuleCog, WhoisHelper):
             for channel in interaction.guild.channels
             if not isinstance(channel, discord.CategoryChannel)
         ]
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="Guild channels", description=f"**Channel count:** {len(channels)}\n\n" + "\n".join(channels)
-            )
-        )
+        await interaction.response.send_message(embed=discord.Embed(
+            title="Guild channels",
+            description=f"**Channel count:** {len(channels)}\n\n" + "\n".join(channels)
+        ))
 
     @guild_info_group.command(name="emojis", description="Get the guilds emojis.")
     async def guild_emojis(self, interaction: discord.Interaction) -> None:
         emojis = interaction.guild.emojis
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="Guild emojis", description=f"**Emoji count:** {len(emojis)}\n\n" + "".join(map(str, emojis))
-            )
-        )
+        await interaction.response.send_message(embed=discord.Embed(
+            title="Guild emojis",
+            description=f"**Emoji count:** {len(emojis)}\n\n" + "".join(map(str, emojis))
+        ))
 
     @guild_info_group.command(name="members", description="Get the guilds members.")
     async def guild_members(self, interaction: discord.Interaction) -> None:
         members = sorted(interaction.guild.members, key=lambda x: x.name)
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="Guild members",
-                description=f"**Member count:** {len(members)}\n\n" + ", ".join([member.mention for member in members]),
-            )
-        )
+        await interaction.response.send_message(embed=discord.Embed(
+            title="Guild members",
+            description=f"**Member count:** {len(members)}\n\n" + ", ".join([member.mention for member in members]),
+        ))
 
     @guild_info_group.command(name="info", description="Gets general info about the guild.")
     async def guild_info(self, interaction: discord.Interaction) -> None:
