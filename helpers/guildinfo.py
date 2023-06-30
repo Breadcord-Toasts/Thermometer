@@ -2,7 +2,7 @@ import time
 
 import discord
 
-from .general import GeneralHelper
+from . import convert_bytes
 
 
 class GuildInfoHelper:
@@ -10,7 +10,7 @@ class GuildInfoHelper:
     async def get_guild_info(guild: discord.Guild, /) -> dict:
         created_at = round(time.mktime(guild.created_at.timetuple()))
         nsfw_level = guild.nsfw_level.name.title() if guild.nsfw_level != discord.NSFWLevel.default else None
-        filesize_limit, filesize_unit = GeneralHelper.convert_bytes(guild.filesize_limit)
+        filesize_limit, filesize_unit = convert_bytes(guild.filesize_limit)
         bot_count = len([member for member in guild.members if member.bot])
         human_count = guild.member_count - bot_count
 

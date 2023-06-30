@@ -1,12 +1,10 @@
 import time
-from datetime import datetime
 
-import discord
 from discord.ext import commands
 
 import breadcord
 from breadcord.module import ModuleCog
-from .helpers import GeneralHelper, WhoisHelper, GuildInfoHelper
+from .helpers import *
 
 
 class Thermometer(ModuleCog, WhoisHelper):
@@ -29,14 +27,14 @@ class Thermometer(ModuleCog, WhoisHelper):
         started_timestamp = round(time.mktime(self.cog_load_time.timetuple()))
 
         await ctx.reply(
-            f"Bot has been online for {GeneralHelper.readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
+            f"Bot has been online for {readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
         )
 
     @commands.hybrid_command(description="Gets info about a user.")
     async def whois(self, ctx: commands.Context, user: discord.User | None = None) -> None:
         user: discord.User = await self.bot.fetch_user(user.id) if user else ctx.author
         user_info = await self.get_user_info(user)
-        banner = GeneralHelper.enhance_asset_image(user.banner).url if user.banner else None
+        banner = enhance_asset_image(user.banner).url if user.banner else None
         embeds = []
 
         if user in ctx.guild.members:
@@ -44,11 +42,11 @@ class Thermometer(ModuleCog, WhoisHelper):
             user_info |= await self.get_member_info(user)
             embeds.extend(await self.get_member_activity_embeds(user))
 
-        embeds.insert(0, GeneralHelper.build_info_embed(
+        embeds.insert(0, build_info_embed(
             user_info,
             title="User info",
             colour=user_info["Role colour"] if "Role colour" in user_info else None,
-            thumbnail=GeneralHelper.enhance_asset_image(user.display_avatar).url,
+            thumbnail=enhance_asset_image(user.display_avatar).url,
             image=banner,
         ))
 
@@ -89,11 +87,11 @@ class Thermometer(ModuleCog, WhoisHelper):
 
     @guild_info_group.command(name="info", description="Gets general info about the guild.")
     async def guild_info(self, ctx: commands.Context) -> None:
-        await ctx.reply(embed=GeneralHelper.build_info_embed(
+        await ctx.reply(embed=build_info_embed(
             await GuildInfoHelper.get_guild_info(ctx.guild),
             title="Guild info",
-            thumbnail=GeneralHelper.enhance_asset_image(ctx.guild.icon).url if ctx.guild.icon else None,
-            image=GeneralHelper.enhance_asset_image(ctx.guild.banner).url if ctx.guild.banner else None,
+            thumbnail=enhance_asset_image(ctx.guild.icon).url if ctx.guild.icon else None,
+            image=enhance_asset_image(ctx.guild.banner).url if ctx.guild.banner else None,
             inline_fields=False,
         ))
 

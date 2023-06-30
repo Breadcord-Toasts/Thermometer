@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import aiohttp
 import discord
 
-from . import GeneralHelper
+from . import info_to_string, readable_timedelta
 
 
 class WhoisHelper:
@@ -26,12 +26,15 @@ class WhoisHelper:
             user_type = "System"
 
         return {
-            "Username": discord.utils.escape_markdown(user.name),
-            "Discriminator": user.discriminator,
+            "Username": discord.utils.escape_markdown(user.name), # Escaped due to non-migrated users
+            "Global display name": discord.utils.escape_markdown(user.global_name) if user.global_name else None,
+            "Discriminator": user.discriminator if user.discriminator != "0" else None,
             "Mention": user.mention,
             "Nickname": discord.utils.escape_markdown(user.display_name) if user.display_name != user.name else None,
             "ID": user.id,
-            "Pronouns": await self.get_user_pronouns(user),
+            # We clarify due to the new pronouns field im profiles, that for some reason can't be accessed by bots
+            "Pronouns": f"{pronouns} (Fetched from [PronounDB](https://pronoundb.org/))"
+            if (pronouns := await self.get_user_pronouns(user)) else None,
             "User type": user_type,
             "Created at": f"<t:{created_at}> (<t:{created_at}:R>)",
         }
@@ -61,7 +64,7 @@ class WhoisHelper:
     async def create_spotify_embed(cls, activity: discord.Spotify) -> discord.Embed:
         embed = discord.Embed(
             title=f"Listening to: {activity.title}",
-            description=GeneralHelper.info_to_string(
+            description=info_to_string(
                 {"Artist": ", ".join(activity.artists), "Album": activity.album, "Song url": activity.track_url}
             ),
             colour=activity.colour,
@@ -75,7 +78,7 @@ class WhoisHelper:
         ends_at = int(time.mktime(activity.end.timetuple())) if activity.end else None
         return discord.Embed(
             title=f"Playing: {activity.name}",
-            description=GeneralHelper.info_to_string(
+            description=info_to_string(
                 {
                     "Started at": f"<t:{started_at}> (<t:{started_at}:R>)" if started_at else None,
                     "Ends at": f"<t:{ends_at}> (<t:{ends_at}:R>)" if ends_at else None,
@@ -96,7 +99,7 @@ class WhoisHelper:
 
         return discord.Embed(
             title=f"Streaming: {activity.name}",
-            description=GeneralHelper.info_to_string(
+            description=info_to_string(
                 {
                     "Game": activity.game,
                     "Platform": platform,
@@ -120,12 +123,12 @@ class WhoisHelper:
         duration = datetime.now(timezone.utc) - activity.start if activity.start else None
         embed.add_field(
             name=" ",
-            value=GeneralHelper.info_to_string(
+            value=info_to_string(
                 {
                     "State": activity.state or None,
                     "Started at": f"<t:{started_at}> (<t:{started_at}:R>)" if started_at else None,
                     "Ends at": f"<t:{ends_at}> (<t:{ends_at}:R>)" if ends_at else None,
-                    "Duration": GeneralHelper.readable_timedelta(duration) if duration else None,
+                    "Duration": readable_timedelta(duration) if duration else None,
                     "URL": activity.url,
                 }
             ),
