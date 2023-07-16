@@ -57,7 +57,7 @@ class WhoisHelper:
             or None,
             "Is bot": member.bot or None,
             "Name colour": colour if colour != discord.Colour.default() else None,
-            "Roles": ", ".join(role.mention for role in reversed(member.roles) if role.name != "@everyone"),
+            "Roles": ", ".join(role.mention for role in reversed(member.roles) if role.name != "@everyone") or None,
         }
 
     @classmethod
