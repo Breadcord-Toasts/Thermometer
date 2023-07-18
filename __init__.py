@@ -1,5 +1,6 @@
 import time
 
+from discord import app_commands
 from discord.ext import commands
 
 import breadcord
@@ -13,6 +14,12 @@ class Thermometer(ModuleCog, WhoisHelper):
         super(WhoisHelper, self).__init__()
 
         self.cog_load_time: datetime = datetime.now()
+
+        self.ctx_menu = app_commands.ContextMenu(
+            name="Who got mentioned",
+            callback=self.role_mention_members_ctx_menu,
+        )
+        self.bot.tree.add_command(self.ctx_menu)
 
     async def cog_load(self) -> None:
         await self.open_session()
@@ -94,6 +101,27 @@ class Thermometer(ModuleCog, WhoisHelper):
             image=enhance_asset_image(ctx.guild.banner).url if ctx.guild.banner else None,
             inline_fields=False,
         ))
+
+    async def role_mention_members_ctx_menu(self, interaction: discord.Interaction, message: discord.Message) -> None:
+        if not message.role_mentions:
+            await interaction.response.send_message("No role mentions found.")
+            return
+
+        embeds_to_be_sent = [
+            discord.Embed(
+                title=f'Members with the role "{role.name}" ' + ("(top 25)" if len(role.members) > 25 else ""),
+                description=", ".join([member.mention for member in role.members[:25]]),
+                colour=role.colour,
+            )
+            for role in message.role_mentions
+            if role.members
+        ][:10]
+        await interaction.response.send_message(
+            f"Only showing 10 of the {len(message.role_mentions)} role mentions."
+            if len(message.role_mentions) > 10 else "",
+            embeds=embeds_to_be_sent,
+            ephemeral=True,
+        )
 
 
 async def setup(bot: breadcord.Bot):
