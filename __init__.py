@@ -1,3 +1,5 @@
+import contextlib
+import io
 import time
 
 from discord import app_commands
@@ -41,8 +43,24 @@ class Thermometer(ModuleCog, WhoisHelper):
     async def whois(self, ctx: commands.Context, user: discord.User | None = None) -> None:
         user: discord.User = await self.bot.fetch_user(user.id) if user else ctx.author
         user_info = await self.get_user_info(user)
-        banner = enhance_asset_image(user.banner).url if user.banner else None
         embeds = []
+
+        # noinspection PyUnusedLocal
+        avatar_filename, banner_filename = None, None
+        avatar, banner = None, None
+        with contextlib.suppress(discord.NotFound):
+            avatar_filename = "avatar.gif" if user.avatar.is_animated() else "avatar.png"
+            avatar = discord.File(
+                fp=io.BytesIO(await enhance_asset_image(user.avatar).read()),
+                filename=avatar_filename,
+            )
+        if user.banner is not None:
+            with contextlib.suppress(discord.NotFound):
+                banner_filename = "banner.gif" if user.banner.is_animated() else "banner.png"
+                banner = discord.File(
+                    fp=io.BytesIO(await enhance_asset_image(user.banner).read()),
+                    filename=banner_filename,
+                )
 
         if user in ctx.guild.members:
             user: discord.Member = ctx.guild.get_member(user.id)
@@ -53,11 +71,17 @@ class Thermometer(ModuleCog, WhoisHelper):
             user_info,
             title="User info",
             colour=user_info["Role colour"] if "Role colour" in user_info else None,
-            thumbnail=enhance_asset_image(user.display_avatar).url,
-            image=banner,
+            thumbnail=f"attachment://{avatar_filename}",
+            image=f"attachment://{banner_filename}",
         ))
 
-        await ctx.reply(embeds=embeds[:10])
+        await ctx.reply(
+            embeds=embeds[:10],
+            files=list(filter(
+                bool,
+                [avatar, banner]
+            ))
+        )
 
     @commands.hybrid_group(name="guild", description="Various guild related info")
     async def guild_info_group(self, ctx: commands.Context) -> None:

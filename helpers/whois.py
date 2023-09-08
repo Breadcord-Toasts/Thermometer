@@ -84,7 +84,7 @@ class WhoisHelper:
                     "Ends at": f"<t:{ends_at}> (<t:{ends_at}:R>)" if ends_at else None,
                 }
             ),
-            colour=discord.Colour.random(),
+            colour=discord.Colour.random(seed=activity.name),
         )
 
     @classmethod
@@ -115,8 +115,8 @@ class WhoisHelper:
         embed = discord.Embed(
             title=f"Activity: {activity.name}",
             description=activity.details,
-            colour=discord.Colour.random(),
-        )
+            colour=discord.Colour.random(seed=activity.name),
+        ).set_thumbnail(url=activity.large_image_url)
 
         started_at = int(time.mktime(activity.start.timetuple())) if activity.start else None
         ends_at = int(time.mktime(activity.end.timetuple())) if activity.end else None
@@ -133,7 +133,6 @@ class WhoisHelper:
                 }
             ),
         )
-        embed.set_thumbnail(url=activity.large_image_url)
         return embed
 
     @classmethod
