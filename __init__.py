@@ -128,7 +128,7 @@ class Thermometer(ModuleCog, WhoisHelper):
 
     async def role_mention_members_ctx_menu(self, interaction: discord.Interaction, message: discord.Message) -> None:
         if not message.role_mentions:
-            await interaction.response.send_message("No role mentions found.")
+            await interaction.response.send_message("No role mentions found.", ephemeral=True)
             return
 
         embeds_to_be_sent = [
