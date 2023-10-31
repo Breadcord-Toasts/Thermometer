@@ -39,6 +39,22 @@ class Thermometer(ModuleCog, WhoisHelper):
             f"Bot has been online for {readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
         )
 
+    @commands.hybrid_command(aliases=["pfp"], description="Gets a user's profile picture.")
+    async def avatar(self, ctx: commands.Context, user: discord.User | None = None) -> None:
+        user = user or ctx.author
+
+        await ctx.reply(
+            embed=discord.Embed(
+                title=(
+                    f"{user.name}'s avatar"
+                    if user.display_name.endswith("s")
+                    else f"{user.display_name}'s avatar"
+                )
+            ).set_image(
+                url=enhance_asset_image(user.avatar).url,
+            )
+        )
+
     @commands.hybrid_command(description="Gets info about a user.")
     async def whois(self, ctx: commands.Context, user: discord.User | None = None) -> None:
         user: discord.User = await self.bot.fetch_user(user.id) if user else ctx.author
