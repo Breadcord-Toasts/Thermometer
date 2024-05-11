@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import io
 import time
@@ -61,21 +62,20 @@ class Thermometer(ModuleCog, WhoisHelper):
         user_info = await self.get_user_info(user)
         embeds = []
 
-        # noinspection PyUnusedLocal
-        avatar_filename, banner_filename = None, None
-        avatar, banner = None, None
-        with contextlib.suppress(discord.NotFound):
-            avatar_filename = "avatar.gif" if user.avatar.is_animated() else "avatar.png"
-            avatar = discord.File(
-                fp=io.BytesIO(await enhance_asset_image(user.avatar).read()),
-                filename=avatar_filename,
-            )
-        if user.banner is not None:
+        async def fetch_avatar() -> discord.File | None:
             with contextlib.suppress(discord.NotFound):
-                banner_filename = "banner.gif" if user.banner.is_animated() else "banner.png"
-                banner = discord.File(
+                return discord.File(
+                    fp=io.BytesIO(await enhance_asset_image(user.avatar).read()),
+                    filename="avatar.gif" if user.avatar.is_animated() else "avatar.png",
+                )
+
+        async def fetch_banner() -> discord.File | None:
+            if user.banner is None:
+                return None
+            with contextlib.suppress(discord.NotFound):
+                return discord.File(
                     fp=io.BytesIO(await enhance_asset_image(user.banner).read()),
-                    filename=banner_filename,
+                    filename="banner.gif" if user.banner.is_animated() else "banner.png",
                 )
 
         if user in ctx.guild.members:
@@ -83,21 +83,58 @@ class Thermometer(ModuleCog, WhoisHelper):
             user_info |= await self.get_member_info(user)
             embeds.extend(await self.get_member_activity_embeds(user))
 
+        avatar_task = asyncio.create_task(fetch_avatar())
+        banner_task = asyncio.create_task(fetch_banner())
+        done, pending = await asyncio.wait(
+            [avatar_task, banner_task],
+            return_when=asyncio.ALL_COMPLETED,
+            timeout=1,
+        )
+
         embeds.insert(0, build_info_embed(
             user_info,
             title="User info",
-            colour=user_info["Role colour"] if "Role colour" in user_info else None,
-            thumbnail=f"attachment://{avatar_filename}",
-            image=f"attachment://{banner_filename}",
+            colour=user.colour,
+            thumbnail=enhance_asset_image(user.avatar).url,
+            image=enhance_asset_image(user.banner).url if user.banner else None,
         ))
 
-        await ctx.reply(
-            embeds=embeds[:10],
-            files=list(filter(
-                bool,
-                [avatar, banner]
-            ))
+        avatar_file, banner_file = None, None
+        if avatar_task in done:
+            avatar_file = avatar_task.result()
+            if avatar_file:
+                embeds[0].set_thumbnail(url=f"attachment://{avatar_file.filename}")
+
+        if banner_task in done:
+            banner_file = banner_task.result()
+            if banner_file:
+                embeds[0].set_image(url=f"attachment://{banner_file.filename}")
+
+        response = await ctx.reply(
+            embeds=embeds,
+            files=tuple(filter(bool, (avatar_file, banner_file))),
         )
+
+        if pending:
+            if avatar_task in pending:
+                avatar_file = await avatar_task
+                if avatar_file:
+                    embeds[0].set_thumbnail(url=f"attachment://{avatar_file.filename}")
+            if banner_task in pending:
+                banner_file = await banner_task
+                if banner_file:
+                    embeds[0].set_image(url=f"attachment://{banner_file.filename}")
+
+            if not (avatar_file or banner_file):
+                return
+            if isinstance(avatar_file, discord.File):
+                avatar_file.fp.seek(0)
+            if isinstance(banner_file, discord.File):
+                banner_file.fp.seek(0)
+            await response.edit(
+                embeds=embeds,
+                attachments=tuple(filter(bool, (avatar_file, banner_file))),
+            )
 
     @commands.hybrid_group(name="guild", description="Various guild related info")
     async def guild_info_group(self, ctx: commands.Context) -> None:
