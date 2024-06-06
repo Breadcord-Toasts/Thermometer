@@ -41,18 +41,19 @@ class Thermometer(ModuleCog, WhoisHelper):
         )
 
     @commands.hybrid_command(aliases=["pfp"], description="Gets a user's profile picture.")
-    async def avatar(self, ctx: commands.Context, user: discord.User | None = None) -> None:
+    async def avatar(
+        self,
+        ctx: commands.Context,
+        user: discord.User | None = None,
+        global_avatar: bool = False,
+    ) -> None:
         user = user or ctx.author
-
         await ctx.reply(
             embed=discord.Embed(
-                title=(
-                    f"{user.name}'s avatar"
-                    if user.display_name.endswith("s")
-                    else f"{user.display_name}'s avatar"
-                )
+                title=f"{user}'s avatar",
+                colour=user.colour,
             ).set_image(
-                url=enhance_asset_image(user.avatar).url,
+                url=enhance_asset_image(user.avatar if global_avatar else user.display_avatar).url,
             )
         )
 
