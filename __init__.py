@@ -202,5 +202,5 @@ class Thermometer(ModuleCog, WhoisHelper):
         )
 
 
-async def setup(bot: breadcord.Bot):
-    await bot.add_cog(Thermometer("thermometer"))
+async def setup(bot: breadcord.Bot, module: breadcord.module.Module) -> None:
+    await bot.add_cog(Thermometer(module.id))
