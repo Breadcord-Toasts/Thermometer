@@ -1,6 +1,4 @@
 import asyncio
-import contextlib
-import io
 import time
 
 from discord import app_commands
@@ -11,10 +9,9 @@ from breadcord.module import ModuleCog
 from .helpers import *
 
 
-class Thermometer(ModuleCog, WhoisHelper):
+class Thermometer(ModuleCog):
     def __init__(self, module_id: str):
         super().__init__(module_id)
-        super(WhoisHelper, self).__init__()
 
         self.cog_load_time: datetime = datetime.now()
 
@@ -23,12 +20,6 @@ class Thermometer(ModuleCog, WhoisHelper):
             callback=self.role_mention_members_ctx_menu,
         )
         self.bot.tree.add_command(self.ctx_menu)
-
-    async def cog_load(self) -> None:
-        await self.open_session()
-
-    async def cog_unload(self) -> None:
-        await self.close_session()
 
     @commands.hybrid_command(description="Returns how long the bot has been running.")
     async def uptime(self, ctx: commands.Context) -> None:
@@ -47,103 +38,75 @@ class Thermometer(ModuleCog, WhoisHelper):
         user: discord.User | None = None,
         global_avatar: bool = False,
     ) -> None:
-        user = user or ctx.author
+        target: discord.User | discord.Member = user or ctx.author
+        avatar: discord.Asset
+        if global_avatar:
+            if not target.avatar:
+                await ctx.reply("User has no global avatar.")
+                return
+            avatar = target.avatar
+        else:
+            avatar = target.display_avatar
         await ctx.reply(
             embed=discord.Embed(
-                title=f"{user}'s avatar",
-                colour=user.colour,
-            ).set_image(
-                url=enhance_asset_image(user.avatar if global_avatar else user.display_avatar).url,
-            )
+                title=f"{target.mention}'s avatar" if user else "Your avatar",
+                colour=target.colour if isinstance(target, discord.Member) else None,
+            ).set_image(url=max_size(avatar).url),
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @commands.hybrid_command(description="Gets info about a user.")
     async def whois(self, ctx: commands.Context, user: discord.User | None = None) -> None:
-        user: discord.User = await self.bot.fetch_user(user.id) if user else ctx.author
-        user_info = await self.get_user_info(user)
-        embeds = []
+        target: discord.User | discord.Member = user or ctx.author
+        # Ensure we have complete saturated objects
+        if ctx.guild and target in ctx.guild.members:
+            target = await ctx.guild.fetch_member(target.id)
+        else:
+            target = await self.bot.fetch_user(target.id)
 
-        async def fetch_avatar() -> discord.File | None:
-            with contextlib.suppress(discord.NotFound):
-                return discord.File(
-                    fp=io.BytesIO(await enhance_asset_image(user.avatar).read()),
-                    filename="avatar.gif" if user.avatar.is_animated() else "avatar.png",
-                )
+        user_details: dict[str, Any | None] = await WhoisHelper.get_user_details(target)
+        if isinstance(target, discord.Member):
+            user_details |= await WhoisHelper.get_member_details(target)
 
-        async def fetch_banner() -> discord.File | None:
-            if user.banner is None:
-                return None
-            with contextlib.suppress(discord.NotFound):
-                return discord.File(
-                    fp=io.BytesIO(await enhance_asset_image(user.banner).read()),
-                    filename="banner.gif" if user.banner.is_animated() else "banner.png",
-                )
-
-        if user in ctx.guild.members:
-            user: discord.Member = ctx.guild.get_member(user.id)
-            user_info |= await self.get_member_info(user)
-            embeds.extend(await self.get_member_activity_embeds(user))
-
-        avatar_task = asyncio.create_task(fetch_avatar())
-        banner_task = asyncio.create_task(fetch_banner())
-        done, pending = await asyncio.wait(
-            [avatar_task, banner_task],
-            return_when=asyncio.ALL_COMPLETED,
-            timeout=1,
+        target_info_embed: discord.Embed = build_info_embed(
+            user_details,
+            title="User info" if user is not None else "Own user info",
+            colour=target.colour,
+            thumbnail=max_size(target.avatar if target.avatar else target.default_avatar).url,
+            image=max_size(target.banner).url if target.banner else None,
         )
-
-        embeds.insert(0, build_info_embed(
-            user_info,
-            title="User info",
-            colour=user.colour,
-            thumbnail=enhance_asset_image(user.avatar).url,
-            image=enhance_asset_image(user.banner).url if user.banner else None,
-        ))
-
-        avatar_file, banner_file = None, None
-        if avatar_task in done:
-            avatar_file = avatar_task.result()
-            if avatar_file:
-                embeds[0].set_thumbnail(url=f"attachment://{avatar_file.filename}")
-
-        if banner_task in done:
-            banner_file = banner_task.result()
-            if banner_file:
-                embeds[0].set_image(url=f"attachment://{banner_file.filename}")
-
-        response = await ctx.reply(
+        embeds: list[discord.Embed] = [target_info_embed]
+        if isinstance(target, discord.Member):
+            embeds.extend(await WhoisHelper.get_member_activity_embeds(target))
+            
+        response: discord.Message = await ctx.reply(embeds=embeds)
+        if target.avatar is None and target.banner is None:
+            return
+        
+        avatar_file, banner_file = await asyncio.gather(
+            fetch_asset(target.avatar, "avatar"), 
+            fetch_asset(target.banner, "banner"), 
+        )
+        if avatar_file:
+            target_info_embed.set_thumbnail(url=f"attachment://{avatar_file.filename}")
+        if banner_file:
+            target_info_embed.set_image(url=f"attachment://{banner_file.filename}")
+        await response.edit(
             embeds=embeds,
-            files=tuple(filter(bool, (avatar_file, banner_file))),
+            attachments=[file for file in (avatar_file, banner_file) if file is not None]
         )
-
-        if pending:
-            if avatar_task in pending:
-                avatar_file = await avatar_task
-                if avatar_file:
-                    embeds[0].set_thumbnail(url=f"attachment://{avatar_file.filename}")
-            if banner_task in pending:
-                banner_file = await banner_task
-                if banner_file:
-                    embeds[0].set_image(url=f"attachment://{banner_file.filename}")
-
-            if not (avatar_file or banner_file):
-                return
-            if isinstance(avatar_file, discord.File):
-                avatar_file.fp.seek(0)
-            if isinstance(banner_file, discord.File):
-                banner_file.fp.seek(0)
-            await response.edit(
-                embeds=embeds,
-                attachments=tuple(filter(bool, (avatar_file, banner_file))),
-            )
 
     @commands.hybrid_group(name="guild", description="Various guild related info")
+    @commands.guild_only()
     async def guild_info_group(self, ctx: commands.Context) -> None:
         # This function is executed when "guild" is run as a message command, it will never run from a slash command.
         await self.guild_info(ctx)
 
     @guild_info_group.command(name="channels", description="Get the guilds channels.")
     async def guild_channels(self, ctx: commands.Context) -> None:
+        if not ctx.guild:
+            await ctx.reply("This command can only be used in a guild.")
+            return
         channels = [
             channel.mention
             for channel in ctx.guild.channels
@@ -156,14 +119,19 @@ class Thermometer(ModuleCog, WhoisHelper):
 
     @guild_info_group.command(name="emojis", description="Get the guilds emojis.")
     async def guild_emojis(self, ctx: commands.Context) -> None:
-        emojis = ctx.guild.emojis
+        if not ctx.guild:
+            await ctx.reply("This command can only be used in a guild.")
+            return
         await ctx.reply(embed=discord.Embed(
             title="Guild emojis",
-            description=f"**Emoji count:** {len(emojis)}\n\n" + "".join(map(str, emojis))
+            description=f"**Emoji count:** {len(ctx.guild.emojis)}\n\n" + "".join(map(str, ctx.guild.emojis))
         ))
 
     @guild_info_group.command(name="members", description="Get the guilds members.")
     async def guild_members(self, ctx: commands.Context) -> None:
+        if not ctx.guild:
+            await ctx.reply("This command can only be used in a guild.")
+            return
         members = sorted(ctx.guild.members, key=lambda x: x.name)
         await ctx.reply(embed=discord.Embed(
             title="Guild members",
@@ -172,11 +140,14 @@ class Thermometer(ModuleCog, WhoisHelper):
 
     @guild_info_group.command(name="info", description="Gets general info about the guild.")
     async def guild_info(self, ctx: commands.Context) -> None:
+        if not ctx.guild:
+            await ctx.reply("This command can only be used in a guild.")
+            return
         await ctx.reply(embed=build_info_embed(
             await GuildInfoHelper.get_guild_info(ctx.guild),
             title="Guild info",
-            thumbnail=enhance_asset_image(ctx.guild.icon).url if ctx.guild.icon else None,
-            image=enhance_asset_image(ctx.guild.banner).url if ctx.guild.banner else None,
+            thumbnail=max_size(ctx.guild.icon).url if ctx.guild.icon else None,
+            image=max_size(ctx.guild.banner).url if ctx.guild.banner else None,
             inline_fields=False,
         ))
 
@@ -184,20 +155,18 @@ class Thermometer(ModuleCog, WhoisHelper):
         if not message.role_mentions:
             await interaction.response.send_message("No role mentions found.", ephemeral=True)
             return
-
-        embeds_to_be_sent = [
-            discord.Embed(
-                title=f'Members with the role "{role.name}" ' + ("(top 25)" if len(role.members) > 25 else ""),
-                description=", ".join([member.mention for member in role.members[:25]]),
-                colour=role.colour,
-            )
-            for role in message.role_mentions
-            if role.members
-        ][:10]
         await interaction.response.send_message(
             f"Only showing 10 of the {len(message.role_mentions)} role mentions."
             if len(message.role_mentions) > 10 else "",
-            embeds=embeds_to_be_sent,
+            embeds=[
+                discord.Embed(
+                    title=f'Members with the role "{role.name}" ' + ("(top 25)" if len(role.members) > 25 else ""),
+                    description=", ".join([member.mention for member in role.members[:25]]),
+                    colour=role.colour,
+                )
+                for role in message.role_mentions
+                if role.members
+            ][:10],
             ephemeral=True,
         )
 

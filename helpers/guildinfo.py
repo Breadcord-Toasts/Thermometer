@@ -1,4 +1,6 @@
 import time
+from enum import Enum
+from typing import Any, cast
 
 import discord
 
@@ -7,12 +9,12 @@ from . import convert_bytes
 
 class GuildInfoHelper:
     @staticmethod
-    async def get_guild_info(guild: discord.Guild, /) -> dict:
+    async def get_guild_info(guild: discord.Guild, /) -> dict[str, Any]:
         created_at = round(time.mktime(guild.created_at.timetuple()))
-        nsfw_level = guild.nsfw_level.name.title() if guild.nsfw_level != discord.NSFWLevel.default else None
+        nsfw_level = cast(Enum, guild.nsfw_level).name.title() if guild.nsfw_level != discord.NSFWLevel.default else None
         filesize_limit, filesize_unit = convert_bytes(guild.filesize_limit)
         bot_count = len([member for member in guild.members if member.bot])
-        human_count = guild.member_count - bot_count
+        human_count: int | None = guild.member_count - bot_count if guild.member_count else None
 
         # noinspection PyUnresolvedReferences
         return {
@@ -46,10 +48,10 @@ class GuildInfoHelper:
                 else None,
             },
             "Stats": {
-                "Members": f"{guild.member_count}/{guild.max_members}",
-                "Bots": bot_count,
-                "Humans": human_count,
-                "Bot/human ratio": f"{round(bot_count/human_count, 3)} bots per human",
+                "Members": f"{guild.member_count}/{guild.max_members}" if guild.member_count else None,
+                "Bots": bot_count if human_count else None,
+                "Humans": human_count if human_count else None,
+                "Bot/human ratio": f"{round(bot_count/human_count, 3)} bots per human" if human_count else None,
                 "Roles": len(guild.roles),
                 "Emojis": f"{len(guild.emojis)}/{guild.emoji_limit}",
                 "Stickers": f"{len(guild.stickers)}/{guild.sticker_limit}",
