@@ -8,13 +8,12 @@ import breadcord
 from breadcord.module import ModuleCog
 from .helpers import *
 
+load_time: datetime = datetime.now()
 
 class Thermometer(ModuleCog):
     def __init__(self, module_id: str):
         super().__init__(module_id)
-
-        self.cog_load_time: datetime = datetime.now()
-
+        
         self.ctx_menu = app_commands.ContextMenu(
             name="Who got mentioned",
             callback=self.role_mention_members_ctx_menu,
@@ -24,12 +23,10 @@ class Thermometer(ModuleCog):
     @commands.hybrid_command(description="Returns how long the bot has been running.")
     async def uptime(self, ctx: commands.Context) -> None:
         # This is technically wrong, as it's the cog uptime, not necessarily the bot uptime, but eh
-        uptime = datetime.now() - self.cog_load_time
-        started_timestamp = round(time.mktime(self.cog_load_time.timetuple()))
-
-        await ctx.reply(
-            f"Bot has been online for {readable_timedelta(uptime)}, last started <t:{started_timestamp}>"
-        )
+        global load_time
+        uptime = datetime.now() - load_time
+        started_timestamp = round(time.mktime(load_time.timetuple()))
+        await ctx.reply(f"Bot has been online for {readable_timedelta(uptime)}, last started <t:{started_timestamp}>")
 
     @commands.hybrid_command(aliases=["pfp"], description="Gets a user's profile picture.")
     async def avatar(
