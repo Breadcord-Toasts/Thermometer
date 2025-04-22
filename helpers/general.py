@@ -1,4 +1,3 @@
-from collections.abc import Buffer
 from datetime import timedelta, datetime
 from io import BytesIO
 from typing import Any, overload
@@ -82,7 +81,7 @@ async def fetch_asset(asset: discord.Asset | None, filename: str | None) -> disc
     if asset is None:
         return None
     try:
-        data: Buffer = await asset.read()
+        data = await asset.read()
     except discord.NotFound:  # There are cases where an asset points to a 404 page
         return None
     else:
